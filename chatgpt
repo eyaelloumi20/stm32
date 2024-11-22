@@ -1,0 +1,127 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <cmath>
+#include <unordered_map>
+#include <set>
+#include <algorithm> // Add this for reverse()
+
+using namespace std;
+
+// Node structure for A* algorithm
+struct Node {
+    int x, y;
+    double cost, heuristic;
+    Node* parent;
+
+    Node(int x, int y, double cost, double heuristic, Node* parent = nullptr)
+        : x(x), y(y), cost(cost), heuristic(heuristic), parent(parent) {}
+
+    bool operator>(const Node& other) const {
+        return (cost + heuristic) > (other.cost + other.heuristic);
+    }
+};
+
+// Heuristic function (Manhattan distance)
+double heuristic(int x1, int y1, int x2, int y2) {
+    return abs(x1 - x2) + abs(y1 - y2);
+}
+
+// Valid movement checks
+bool isValidMove(int x, int y, const vector<vector<int>>& grid, const set<pair<int, int>>& visitedNodes) {
+    return x >= 0 && y >= 0 && x < static_cast<int>(grid.size()) && y < static_cast<int>(grid[0].size()) &&
+           grid[x][y] != -1 && visitedNodes.find({x, y}) == visitedNodes.end();
+}
+
+// A* algorithm to find a single path
+vector<pair<int, int>> aStar(const vector<vector<int>>& grid, pair<int, int> start, pair<int, int> end, set<pair<int, int>>& visitedNodes) {
+    priority_queue<Node, vector<Node>, greater<Node>> openList;
+    unordered_map<int, Node*> visited;
+
+    openList.emplace(start.first, start.second, 0, heuristic(start.first, start.second, end.first, end.second));
+
+    vector<pair<int, int>> directions = {{-1, 0}, {0, -1}, {1, 0}, {0, 1}}; // Anti-clockwise: Up, Left, Down, Right
+
+    while (!openList.empty()) {
+        Node current = openList.top();
+        openList.pop();
+
+        if (current.x == end.first && current.y == end.second) {
+            vector<pair<int, int>> path;
+            Node* node = &current;
+            while (node) {
+                path.emplace_back(node->x, node->y);
+                visitedNodes.insert({node->x, node->y});
+                node = node->parent;
+            }
+            reverse(path.begin(), path.end());
+            return path;
+        }
+
+        int hash = current.x * grid[0].size() + current.y;
+        if (visited.count(hash)) continue;
+        visited[hash] = new Node(current);
+
+        for (auto& dir : directions) {
+            int newX = current.x + dir.first;
+            int newY = current.y + dir.second;
+
+            if (isValidMove(newX, newY, grid, visitedNodes)) {
+                double newCost = current.cost + 1;
+                double newHeuristic = heuristic(newX, newY, end.first, end.second);
+                openList.emplace(newX, newY, newCost, newHeuristic, visited[hash]);
+            }
+        }
+    }
+
+    return {}; // No path found
+}
+
+// Function to display the grid with the path
+void displayGrid(const vector<vector<int>>& grid, const vector<pair<int, int>>& path) {
+    vector<vector<char>> display(grid.size(), vector<char>(grid[0].size(), '.'));
+
+    for (const auto& p : path) {
+        display[p.first][p.second] = '*';
+    }
+
+    for (const auto& row : display) {
+        for (char c : row) cout << c << " ";
+        cout << endl;
+    }
+}
+
+int main() {
+    // Define the grid
+    vector<vector<int>> grid = {
+        { 0,  0,  0,  0,  0,  0,  0,  0,  0},
+        { 0, -1,  0, -1,  0, -1,  0, -1,  0},
+        { 0, -1,  0, -1,  0, -1,  0, -1,  0},
+        { 0, -1,  0, -1,  0, -1,  0, -1,  0},
+        { 0, -1,  0, -1,  0, -1,  0, -1,  0},
+        { 0, -1,  0, -1,  0, -1,  0, -1,  0},
+        { 0,  0,  0,  0,  0,  0,  0,  0,  0},
+    };
+
+    // Starting and ending points
+    pair<int, int> start = {6, 0}; // Starting position
+    pair<int, int> end = {0, 8};   // Target position
+
+    set<pair<int, int>> visitedNodes; // Keep track of visited nodes
+    vector<vector<pair<int, int>>> allPaths;
+
+    // Find 4 different paths
+    for (int i = 0; i < 4; ++i) {
+        vector<pair<int, int>> path = aStar(grid, start, end, visitedNodes);
+        if (path.empty()) {
+            cout << "No more paths found!" << endl;
+            break;
+        }
+        allPaths.push_back(path);
+        cout << "Path " << i + 1 << ":" << endl;
+        displayGrid(grid, path);
+        cout << endl;
+    }
+
+    return 0;
+}
