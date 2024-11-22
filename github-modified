@@ -1,0 +1,128 @@
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <queue>
+#include <limits>
+
+using namespace std;
+
+#define NORTH 1
+#define EAST 2
+#define SOUTH 3
+#define WEST 4
+
+#define LEFT 5
+#define RIGHT 6
+#define STRAIGHT 7
+#define BACKWARD 8
+
+struct Point {
+    int pointID;
+    int x, y;               // Coordinates for heuristic calculation
+    int distance;           // Cost from the source
+    int heuristic;          // Estimated cost to the goal
+    Point* prev;            // Pointer to the previous point in the path
+    bool inSPT;             // Whether this point is in the shortest path tree
+
+    // Constructor
+    Point(int id, int x, int y)
+        : pointID(id), x(x), y(y), distance(numeric_limits<int>::max()), heuristic(0), prev(nullptr), inSPT(false) {}
+
+    // A* priority: distance + heuristic
+    int totalCost() const {
+        return distance + heuristic;
+    }
+
+    // Comparison operator for priority queue
+    bool operator>(const Point& other) const {
+        return this->totalCost() > other.totalCost();
+    }
+};
+
+// Heuristic function: Euclidean distance
+int calculateHeuristic(Point& current, Point& goal) {
+    return sqrt(pow(current.x - goal.x, 2) + pow(current.y - goal.y, 2));
+}
+
+// A* implementation
+void shortestPathAStar(vector<vector<int>>& graph, vector<Point>& points, int source, int dest, int initialDirection) {
+    priority_queue<Point*, vector<Point*>, greater<Point*>> openList;
+
+    points[source].distance = 0; // Set the distance for the source node to 0
+    points[source].heuristic = calculateHeuristic(points[source], points[dest]);
+    openList.push(&points[source]);
+
+    while (!openList.empty()) {
+        Point* current = openList.top();
+        openList.pop();
+
+        // If we reached the destination, break
+        if (current->pointID == dest) {
+            break;
+        }
+
+        current->inSPT = true; // Mark the current node as processed
+
+        // Update all neighbors
+        for (int i = 0; i < graph[current->pointID].size(); ++i) {
+            if (graph[current->pointID][i] > 0) { // Neighbor exists
+                Point& neighbor = points[i];
+                if (!neighbor.inSPT) {
+                    int newDistance = current->distance + graph[current->pointID][i];
+                    if (newDistance < neighbor.distance) {
+                        neighbor.distance = newDistance;
+                        neighbor.heuristic = calculateHeuristic(neighbor, points[dest]);
+                        neighbor.prev = current;
+                        openList.push(&neighbor);
+                    }
+                }
+            }
+        }
+    }
+
+    // Backtrack to get the path
+    vector<int> path;
+    Point* current = &points[dest];
+    while (current != nullptr) {
+        path.push_back(current->pointID);
+        current = current->prev;
+    }
+    reverse(path.begin(), path.end());
+
+    // Print the path
+    cout << "Shortest path using A* from " << source << " to " << dest << ": ";
+    for (int id : path) {
+        cout << id << " ";
+    }
+    cout << endl;
+}
+
+int main() {
+    // Graph definition
+    vector<vector<int>> graph = {
+        {0, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+        {2, 0, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0},
+        {0, 1, 0, 6, 0, 0, 4, 0, 0, 0, 0, 0},
+        {0, 0, 6, 0, 0, 0, 0, 1, 0, 0, 0, 0},
+        {1, 0, 0, 0, 3, 0, 0, 0, 1, 0, 0, 0},
+        {0, 2, 0, 0, 3, 0, 3, 0, 0, 1, 0, 0},
+        {0, 0, 4, 0, 0, 3, 0, 1, 0, 0, 1, 0},
+        {0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 2},
+        {0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0},
+        {0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 2, 0},
+        {0, 0, 0, 0, 0, 0, 1, 0, 0, 2, 0, 1},
+        {0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 1, 0},
+    };
+
+    // Points definition with coordinates (x, y)
+    vector<Point> points = {
+        Point(0, 0, 0), Point(1, 1, 0), Point(2, 2, 0), Point(3, 3, 0),
+        Point(4, 0, 1), Point(5, 1, 1), Point(6, 2, 1), Point(7, 3, 1),
+        Point(8, 0, 2), Point(9, 1, 2), Point(10, 2, 2), Point(11, 3, 2),
+    };
+
+    // Run A* algorithm
+    shortestPathAStar(graph, points, 0, 11, EAST);
+
+    return 0;
+}
